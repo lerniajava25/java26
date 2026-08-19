@@ -9,8 +9,14 @@ void main() {
         IO.println("Please enter a valid age!");
         age = IO.readln("Student age: ");
     }
+    var temp = Integer.parseInt(age);
+    IO.println("Student age is > 10: " + greaterThanTen(temp));
     students.add(new Student(name, Integer.parseInt(age)));
 
+    printAllStudents(students);
+}
+
+private static void printAllStudents(List<Student> students) {
     //Print all students
     for (Student student : students) {
         System.out.println(student.name() + " " + student.age());
@@ -27,4 +33,13 @@ boolean tryParseInt(String str) {
     } catch (NumberFormatException _) {
         return false;
     }
+}
+
+//Method overloading
+boolean greaterThanTen(int value) {
+    return value > 10;
+}
+
+boolean greaterThanTen(float value) {
+    return value > 10.0f;
 }
