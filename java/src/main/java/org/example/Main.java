@@ -1,23 +1,19 @@
-// We want to read information about students from stdinput
-// Each student should have a name and an age
-// We need to store multiple students
-
 void main() {
-    Student[] students = new Student[3];
+    List<Student> students = new ArrayList<>();
 
-    students[0] = new Student("Martin", 49);
-    students[1] = new Student("Kalle", 19);
+    students.add(new Student("Martin", 49));
+    students.add(new Student("Kalle", 19));
     String name = IO.readln("Student name: ");
     String age = IO.readln("Student age: ");
-    while (!tryParseInt(age)) {
+    while (age != null && !tryParseInt(age)) {
         IO.println("Please enter a valid age!");
         age = IO.readln("Student age: ");
     }
-    students[2] = new Student(name, Integer.parseInt(age));
+    students.add(new Student(name, Integer.parseInt(age)));
 
     //Print all students
-    for (int i = 0; i < students.length; i++) {
-        System.out.println(students[i].name() + " " + students[i].age());
+    for (Student student : students) {
+        System.out.println(student.name() + " " + student.age());
     }
 }
 
