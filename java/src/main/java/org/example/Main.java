@@ -3,6 +3,7 @@ package org.example;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class Main {
@@ -22,6 +23,9 @@ public class Main {
         IO.println("Student age is > 10: " + greaterThanTen(temp));
         students.add(new Student(name, Integer.parseInt(age), LocalDateTime.now()));
 
+        //Sort students based on name
+        students.sort(Comparator.comparing(Student::name));
+
         printAllStudents(students);
     }
 
@@ -30,7 +34,9 @@ public class Main {
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
         for (Student student : students) {
-            System.out.println(student.name() + " " + student.age() + " " + student.createdAt().format(dtf));
+            System.out.println(student.name() + " " + student.age() + " " +
+                    student.createdAt().format(dtf) + " " +
+                    String.format("%.2f", Math.sqrt(student.age() * 42.0)));
         }
     }
 
