@@ -17,6 +17,8 @@ void main() {
     }
 
     List<Animal> animals = new ArrayList<>();
+//    animals = Collections.unmodifiableList(animals); //Breaks when using modifying methods
+
     animals.add(new Dog());
     animals.add(new Cat());
     animals.add(new Cat());
