@@ -28,6 +28,20 @@ public class Point {
         this.y = y;
     }
 
+    /**
+     * Creates a new Point object by copying the x and y coordinates from another Point.
+     *
+     * @param point The Point object whose coordinates are to be copied.
+     */
+    public Point(Point point) {
+        this.x = point.x;
+        this.y = point.y;
+    }
+
+    public static Point of(double x, double y) {
+        return new Point(x, y);
+    }
+
     public double x() {
         return x;
     }
