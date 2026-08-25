@@ -1,33 +1,31 @@
 package org.example;
 
+import static org.example.TemperatureService.displayTemperature;
+
 public class HotOrNot {
     static void main() {
-        Temperature temperature = new Fahrenheit();
+        Temperature temperature = new Temperature.Celcius(29);
         displayTemperature(temperature);
     }
+}
 
-    private static void displayTemperature(Temperature temperature) {
+sealed interface Temperature {
+    record Celcius(int val) implements Temperature {
+    }
+
+    record Fahrenheit(int val) implements Temperature {
+    }
+}
+
+class TemperatureService {
+    private TemperatureService() {
+    }
+
+    public static void displayTemperature(Temperature temperature) {
         switch (temperature) {
-            case Celsius c -> IO.println(c.getTemperature() + " ℃");
-            case Fahrenheit f -> IO.println(f.getTemperature() + " ℉");
+            case Temperature.Celcius(var t) when t > 30 -> IO.println(t + " ℃ 🔥");
+            case Temperature.Celcius(var t) -> IO.println(t + " ℃");
+            case Temperature.Fahrenheit(var t) -> IO.println(t + " ℉");
         }
-    }
-}
-
-sealed interface Temperature permits Celsius, Fahrenheit {
-    int getTemperature();
-}
-
-final class Celsius implements Temperature {
-    @Override
-    public int getTemperature() {
-        return 0;
-    }
-}
-
-final class Fahrenheit implements Temperature {
-    @Override
-    public int getTemperature() {
-        return 32;
     }
 }
