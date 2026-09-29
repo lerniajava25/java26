@@ -15,7 +15,7 @@ public class HelloService {
     }
 
     @WriteLock
-    @ReadLock
+    //@ReadLock
     public String concat(String a, String b) {
         return a + b;
     }

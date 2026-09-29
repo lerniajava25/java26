@@ -104,11 +104,6 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.15.0</version>
                 <configuration>
-                    <annotationProcessors>
-                        <annotationProcessor>
-                            org.example.jakartaee.processor.LockedAnnotationProcessor
-                        </annotationProcessor>
-                    </annotationProcessors>
                     <annotationProcessorPaths>
                         <!-- Om processorn är ett eget bibliotek/modul -->
                         <path>
@@ -117,10 +112,6 @@
                             <version>1.0-SNAPSHOT</version>
                         </path>
                     </annotationProcessorPaths>
-                    <!--                    <compilerArgs>-->
-                    <!--                        <arg>-XprintProcessorInfo</arg>-->
-                    <!--                        <arg>-verbose</arg>-->
-                    <!--                    </compilerArgs>-->
                 </configuration>
             </plugin>
         </plugins>

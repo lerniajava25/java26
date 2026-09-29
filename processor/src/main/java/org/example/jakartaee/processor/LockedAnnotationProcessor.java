@@ -12,8 +12,8 @@ import javax.tools.Diagnostic;
 import java.util.Set;
 
 @SupportedAnnotationTypes({
-        "org.example.jakartaee.cross.org.example.jakartaee.cross.ReadLock",
-        "org.example.jakartaee.cross.org.example.jakartaee.cross.WriteLock"
+        "org.example.jakartaee.cross.ReadLock",
+        "org.example.jakartaee.cross.WriteLock"
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_27)
 @AutoService(Processor.class)
