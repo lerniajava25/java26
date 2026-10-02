@@ -33,14 +33,12 @@ public class Chat {
                         Your answers should be brief and to the point. Use only max 2 sentences.
                         """, ""));
         var tools = List.of(
-                new Tool("function",
-                        new ToolFunctionSpec(
-                                "get_current_datetime",
-                                Map.of("type", "object",
-                                        "properties", Map.of(),
-                                        "required", List.of()
-                                ))
-                ));
+                new Tool("function", new ToolFunctionSpec(
+                        "get_current_datetime",
+                        "Returns the current date and time for Stockholm, Sweden.",
+                        Map.of("type", "object", "properties", Map.of(), "required", List.of())
+                ))
+        );
 
         while (true) {
             String userInput = IO.readln("You: ");
@@ -112,7 +110,7 @@ record Request(String model, List<Message> messages, List<Tool> tools) {
 record Tool(String type, ToolFunctionSpec function) {
 }
 
-record ToolFunctionSpec(String name, Map<String, Object> parameters) {
+record ToolFunctionSpec(String name, String description, Map<String, Object> parameters) {
 }
 
 record Message(String role, String content, String tool_call_id) {
