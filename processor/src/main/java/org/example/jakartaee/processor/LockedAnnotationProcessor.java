@@ -15,7 +15,7 @@ import java.util.Set;
         "org.example.jakartaee.cross.ReadLock",
         "org.example.jakartaee.cross.WriteLock"
 })
-@SupportedSourceVersion(SourceVersion.RELEASE_27)
+@SupportedSourceVersion(SourceVersion.RELEASE_25)
 @AutoService(Processor.class)
 public class LockedAnnotationProcessor extends AbstractProcessor {
 
