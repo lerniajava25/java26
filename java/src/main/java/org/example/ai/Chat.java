@@ -42,6 +42,7 @@ public class Chat {
                         - Listing directories and reading files (requires user confirmation).
                         - Creating or overwriting files (requires user confirmation).
                         - Running PowerShell commands (requires user confirmation).
+                        - Updating specific parts of files using search and replace (requires user confirmation).
                         Use these tools proactively to solve programming and file-management tasks when requested.
                         """, ""));
 
@@ -107,6 +108,21 @@ public class Chat {
                                                 "content", Map.of("type", "string", "description", "The full content to write into the file")
                                         ),
                                         "required", List.of("path", "content")
+                                )
+                        )
+                ),
+                new Tool("function",
+                        new ToolFunctionSpec(
+                                "patch_file",
+                                "Updates a specific section of a file by finding a unique search block and replacing it with a replacement block. Requires user confirmation.",
+                                Map.of(
+                                        "type", "object",
+                                        "properties", Map.of(
+                                                "path", Map.of("type", "string", "description", "The file path to update"),
+                                                "search", Map.of("type", "string", "description", "The exact lines of code to find in the file"),
+                                                "replace", Map.of("type", "string", "description", "The new lines of code to put in its place")
+                                        ),
+                                        "required", List.of("path", "search", "replace")
                                 )
                         )
                 )
@@ -244,6 +260,48 @@ public class Chat {
 
                 java.nio.file.Files.writeString(path, content);
                 return "Success: File successfully written to " + pathStr;
+            } else if ("patch_file".equals(name)) {
+                String pathStr = (String) args.get("path");
+                String search = (String) args.get("search");
+                String replace = (String) args.get("replace");
+
+                java.nio.file.Path path = java.nio.file.Path.of(pathStr);
+                if (!java.nio.file.Files.exists(path)) {
+                    return "Error: File does not exist: " + pathStr;
+                }
+
+                String content = java.nio.file.Files.readString(path);
+                // Räkna antal förekomster
+                int occurrences = 0;
+                int lastIndex = 0;
+                while ((lastIndex = content.indexOf(search, lastIndex)) != -1) {
+                    occurrences++;
+                    lastIndex += search.length();
+                }
+
+                if (occurrences == 0) {
+                    return "Error: The 'search' block was not found in the file. Make sure you match the exact content including whitespace.";
+                } else if (occurrences > 1) {
+                    return "Error: Multiple matches found (" + occurrences + "). Please provide more surrounding context to make the search block unique.";
+                }
+
+                System.out.println("\n[SÄKERHET] Agenten vill uppdatera filen (Patch):");
+                System.out.println("  > " + pathStr);
+                System.out.println("--- HITTAS/BYTS UT ---");
+                System.out.println(search);
+                System.out.println("--- NYTT INNEHÅLL ---");
+                System.out.println(replace);
+                System.out.println("----------------------");
+
+                String answer = IO.readln("Tillåt ändring? (ja/nej): ");
+                if (!answer.equalsIgnoreCase("ja")) {
+                    return "Error: User denied patching the file.";
+                }
+
+                // Ersätt textblocket och spara filen
+                String updatedContent = content.replace(search, replace);
+                java.nio.file.Files.writeString(path, updatedContent);
+                return "Success: File successfully patched.";
             }
 
             throw new IllegalArgumentException("Unknown tool call: " + name);
