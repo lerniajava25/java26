@@ -33,5 +33,14 @@ public class RestOrderClient implements OrderExternalService {
             this.customerId = customerId;
             this.status = status;
         }
+
+        @Override
+        public String toString() {
+            return "ExternalOrderDto{" +
+                    "orderId='" + orderId + '\'' +
+                    ", customerId='" + customerId + '\'' +
+                    ", status='" + status + '\'' +
+                    '}';
+        }
     }
 }
