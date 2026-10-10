@@ -1,16 +1,12 @@
 package org.example.mcp;
 
+import org.example.mcp.tools.CurrentTimeTool;
+import org.example.mcp.tools.McpTool;
+import org.example.mcp.tools.ToolResult;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.time.DateTimeException;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Transport-independent MCP logic for protocol version 2026-07-28:
@@ -18,8 +14,27 @@ import java.util.Map;
  * Knows nothing about HTTP (except the HTTP status it attaches to errors).
  */
 public final class McpCore {
-    private McpCore() {
+
+    /**
+     * Shared default instance pre-configured with {@link CurrentTimeTool}.
+     */
+    private static final McpCore DEFAULT = new McpCore(new CurrentTimeTool());
+
+    public static McpCore getDefault() {
+        return DEFAULT;
     }
+
+    /**
+     * Registers a tool on the default shared instance.
+     */
+    public static void registerTool(McpTool tool) {
+        DEFAULT.addTool(tool);
+    }
+
+    /**
+     * Preserved for backward compatibility.
+     */
+    public static final Map<String, Object> CURRENT_TIME_TOOL = CurrentTimeTool.DEFINITION;
 
     /**
      * One shared mapper. In Jackson 3 a JsonMapper is immutable and thread-safe, and is configured
@@ -41,7 +56,7 @@ public final class McpCore {
     /**
      * Map / List / ... -> JSON text (compact, single line).
      */
-    static String toJson(Object value) {
+    public static String toJson(Object value) {
         return MAPPER.writeValueAsString(value);
     }
 
@@ -62,18 +77,88 @@ public final class McpCore {
     static final String META_CLIENT_CAPS = "io.modelcontextprotocol/clientCapabilities";
     static final String META_SERVER_INFO = "io.modelcontextprotocol/serverInfo";
 
+    private final Map<String, McpTool> tools = Collections.synchronizedMap(new LinkedHashMap<>());
+    private String instructions;
+    private String serverName = "java-time-server";
+    private String serverVersion = "1.0.0";
+
+    public McpCore() {
+    }
+
+    public McpCore(McpTool... initialTools) {
+        for (McpTool tool : initialTools) {
+            addTool(tool);
+        }
+    }
+
+    public McpCore(Collection<McpTool> initialTools) {
+        for (McpTool tool : initialTools) {
+            addTool(tool);
+        }
+    }
+
+    /**
+     * Adds an {@link McpTool} to this core instance.
+     */
+    public McpCore addTool(McpTool tool) {
+        tools.put(tool.name(), tool);
+        return this;
+    }
+
+    /**
+     * Removes a tool by name.
+     */
+    public McpCore removeTool(String name) {
+        tools.remove(name);
+        return this;
+    }
+
+    /**
+     * Returns an unmodifiable view of registered tools.
+     */
+    public Map<String, McpTool> getTools() {
+        synchronized (tools) {
+            return Collections.unmodifiableMap(new LinkedHashMap<>(tools));
+        }
+    }
+
+    /**
+     * Sets custom discover instructions.
+     */
+    public McpCore setInstructions(String instructions) {
+        this.instructions = instructions;
+        return this;
+    }
+
+    /**
+     * Sets custom server metadata (reported in _meta).
+     */
+    public McpCore setServerInfo(String serverName, String serverVersion) {
+        this.serverName = serverName;
+        this.serverVersion = serverVersion;
+        return this;
+    }
+
+    /**
+     * Handles one already-parsed JSON-RPC *request* using the default shared instance
+     * and returns the full JSON-RPC response object.
+     */
+    static Map<String, Object> handle(Map<String, Object> msg) {
+        return DEFAULT.handleRequest(msg);
+    }
+
     /**
      * Handles one already-parsed JSON-RPC *request* and returns the full JSON-RPC response object.
      */
     @SuppressWarnings("unchecked")
-    static Map<String, Object> handle(Map<String, Object> msg) {
+    public Map<String, Object> handleRequest(Map<String, Object> msg) {
         String method = (String) msg.get("method");
         Map<String, Object> params = msg.get("params") instanceof Map
                 ? (Map<String, Object>) msg.get("params") : new LinkedHashMap<>();
 
         // Legacy clients start with "initialize". We have no handshake; per spec, name our versions.
         // (Unknown method on HTTP => 404 + -32601.)
-        if (method.equals("initialize")) {
+        if ("initialize".equals(method)) {
             throw new McpException(404, METHOD_NOT_FOUND,
                     "This server only supports MCP protocol version(s) " + SUPPORTED_VERSIONS
                             + " and has no initialize handshake. Send _meta.\"" + META_VERSION + "\" on every request.");
@@ -106,89 +191,59 @@ public final class McpCore {
 
     // ------------------------------------------------------------------ methods
 
-    static Map<String, Object> discover() {
+    public Map<String, Object> discover() {
+        String inst = instructions;
+        if (inst == null) {
+            if (tools.containsKey(CurrentTimeTool.NAME) && tools.size() == 1) {
+                inst = "Use get_current_time to find out the current date and time.";
+            } else {
+                inst = "Available tools: " + String.join(", ", tools.keySet());
+            }
+        }
         return obj(
                 "supportedVersions", SUPPORTED_VERSIONS,
                 "capabilities", obj("tools", obj()),   // tools only, no listChanged
-                "instructions", "Use get_current_time to find out the current date and time.",
+                "instructions", inst,
                 "ttlMs", 3_600_000,
                 "cacheScope", "public");
     }
 
-    static Map<String, Object> toolsList() {
+    public Map<String, Object> toolsList() {
+        List<Map<String, Object>> toolDefs;
+        synchronized (tools) {
+            toolDefs = tools.values().stream()
+                    .map(McpTool::definition)
+                    .toList();
+        }
         return obj(
-                "tools", List.of(CURRENT_TIME_TOOL),   // deterministic order
-                "ttlMs", 300_000,                      // required on tools/list in this revision
+                "tools", toolDefs,   // deterministic order
+                "ttlMs", 300_000,    // required on tools/list in this revision
                 "cacheScope", "public");
     }
 
-    /**
-     * Tool definition: what the LLM sees.
-     */
-    static final Map<String, Object> CURRENT_TIME_TOOL = obj(
-            "name", "get_current_time",
-            "title", "Current date and time",
-            "description", "Returns the current date and time. Optionally takes an IANA time zone "
-                    + "such as 'Europe/Stockholm' or 'America/New_York'. Defaults to UTC.",
-            "inputSchema", obj(
-                    "type", "object",
-                    "properties", obj(
-                            "timezone", obj(
-                                    "type", "string",
-                                    "description", "IANA time zone ID, e.g. Europe/Stockholm. Defaults to UTC.")),
-                    "additionalProperties", false),
-            "outputSchema", obj(
-                    "type", "object",
-                    "properties", obj(
-                            "iso8601", obj("type", "string"),
-                            "date", obj("type", "string"),
-                            "time", obj("type", "string"),
-                            "timezone", obj("type", "string"),
-                            "utcOffset", obj("type", "string"),
-                            "epochMillis", obj("type", "integer")),
-                    "required", List.of("iso8601", "date", "time", "timezone", "utcOffset", "epochMillis")),
-            "annotations", obj("readOnlyHint", true, "idempotentHint", true, "openWorldHint", false));
-
     @SuppressWarnings("unchecked")
-    static Map<String, Object> toolsCall(Map<String, Object> params) {
+    public Map<String, Object> toolsCall(Map<String, Object> params) {
         Object name = params.get("name");
-        if (!"get_current_time".equals(name)) {
+        McpTool tool;
+        if (!(name instanceof String toolName) || (tool = tools.get(toolName)) == null) {
             // Unknown tool = protocol error (JSON-RPC error). The request itself was processed, so HTTP 200.
             throw new McpException(200, INVALID_PARAMS, "Unknown tool: " + name);
         }
         Map<String, Object> args = params.get("arguments") instanceof Map
                 ? (Map<String, Object>) params.get("arguments") : Map.of();
 
-        // Bad *input values* are tool execution errors (isError: true) so the LLM can self-correct.
-        ZoneId zone;
-        Object tz = args.get("timezone");
         try {
-            if (tz == null) zone = ZoneOffset.UTC;
-            else if (tz instanceof String s) zone = ZoneId.of(s);
-            else return toolError("'timezone' must be a string, e.g. \"Europe/Stockholm\".");
-        } catch (DateTimeException e) {
-            return toolError("Unknown time zone '" + tz
-                    + "'. Use an IANA ID such as \"Europe/Stockholm\" or \"UTC\".");
+            ToolResult result = tool.execute(args);
+            return result.toMap();
+        } catch (McpException e) {
+            throw e;
+        } catch (Exception e) {
+            return ToolResult.error("Tool execution failed: " + (e.getMessage() != null ? e.getMessage() : e.toString())).toMap();
         }
-
-        ZonedDateTime now = ZonedDateTime.now(zone);
-        Map<String, Object> structured = obj(
-                "iso8601", now.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
-                "date", now.toLocalDate().toString(),
-                "time", now.toLocalTime().withNano(0).toString(),
-                "timezone", zone.getId(),
-                "utcOffset", now.getOffset().getId(),
-                "epochMillis", now.toInstant().toEpochMilli());
-
-        return obj(
-                // Backwards-compat: also serialize structured output as text
-                "content", List.of(obj("type", "text", "text", toJson(structured))),
-                "structuredContent", structured,
-                "isError", false);
     }
 
     static Map<String, Object> toolError(String message) {
-        return obj("content", List.of(obj("type", "text", "text", message)), "isError", true);
+        return ToolResult.error(message).toMap();
     }
 
     // ------------------------------------------------------------------ response helpers
@@ -196,11 +251,11 @@ public final class McpCore {
     /**
      * Wraps a result: adds the required resultType and the recommended serverInfo in _meta.
      */
-    static Map<String, Object> response(Object id, Map<String, Object> result) {
+    Map<String, Object> response(Object id, Map<String, Object> result) {
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("resultType", "complete");
         r.putAll(result);
-        r.put("_meta", obj(META_SERVER_INFO, obj("name", "java-time-server", "version", "1.0.0")));
+        r.put("_meta", obj(META_SERVER_INFO, obj("name", serverName, "version", serverVersion)));
         return obj("jsonrpc", "2.0", "id", id, "result", r);
     }
 
@@ -216,7 +271,7 @@ public final class McpCore {
     /**
      * obj("a", 1, "b", 2) -> insertion-ordered map.
      */
-    static Map<String, Object> obj(Object... kv) {
+    public static Map<String, Object> obj(Object... kv) {
         Map<String, Object> m = new LinkedHashMap<>();
         for (int i = 0; i < kv.length; i += 2) m.put((String) kv[i], kv[i + 1]);
         return m;

@@ -3,6 +3,7 @@ package org.example.mcp;
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import org.example.mcp.tools.McpTool;
 import tools.jackson.core.JacksonException;
 
 import java.io.IOException;
@@ -39,27 +40,49 @@ public class McpHttpServer {
      */
     static final Set<String> ALLOWED_ORIGIN_HOSTS = new HashSet<>(List.of("localhost", "127.0.0.1", "[::1]"));
 
+    private static McpCore defaultCore = McpCore.getDefault();
+
+    /**
+     * Registers a tool to the default HTTP server instance.
+     */
+    public static void registerTool(McpTool tool) {
+        defaultCore.addTool(tool);
+    }
+
+    public static HttpServer startServer(int port) throws IOException {
+        return startServer(port, defaultCore);
+    }
+
+    public static HttpServer startServer(int port, McpCore core) throws IOException {
+        // Bind to loopback only: a local server must not be reachable from the network.
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
+        server.createContext(ENDPOINT, ex -> handle(ex, core));
+        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());   // Java 21
+        server.start();
+        log("MCP server (protocol " + McpCore.PROTOCOL_VERSION + ") listening on http://127.0.0.1:" + port + ENDPOINT);
+        return server;
+    }
+
     public static void main(String[] args) throws IOException {
         int port = args.length > 0 ? Integer.parseInt(args[0])
                 : Integer.parseInt(System.getenv().getOrDefault("PORT", "3000"));
         String extra = System.getenv("MCP_ALLOWED_HOSTS");
         if (extra != null) for (String h : extra.split(",")) if (!h.isBlank()) ALLOWED_ORIGIN_HOSTS.add(h.trim());
 
-        // Bind to loopback only: a local server must not be reachable from the network.
-        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 0);
-        server.createContext(ENDPOINT, McpHttpServer::handle);
-        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor());   // Java 21
-        server.start();
-        log("MCP time server (protocol " + McpCore.PROTOCOL_VERSION + ") listening on http://127.0.0.1:" + port + ENDPOINT);
+        startServer(port, defaultCore);
     }
 
     static void log(String msg) {
-        System.err.println("[time-server] " + msg);
+        System.err.println("[mcp-server] " + msg);
     }
 
     // ------------------------------------------------------------------ request handling
 
     static void handle(HttpExchange ex) throws IOException {
+        handle(ex, defaultCore);
+    }
+
+    static void handle(HttpExchange ex, McpCore core) throws IOException {
         Object id = null;
         try {
             // 1. Origin check (before anything else)
@@ -112,7 +135,7 @@ public class McpHttpServer {
             // 6. Hand over to the protocol layer
             log(msg.get("method") + (msg.get("params") instanceof Map<?, ?> p && p.get("name") != null
                     ? " " + p.get("name") : ""));
-            send(ex, 200, McpCore.handle(msg));
+            send(ex, 200, core.handleRequest(msg));
 
         } catch (McpException e) {
             send(ex, e.httpStatus, McpCore.errorResponse(id, e.code, e.getMessage(), e.data));
