@@ -1,6 +1,8 @@
 package org.example.ai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import org.example.mcp.McpClient;
+import org.example.mcp.tools.McpToolInfo;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -11,6 +13,7 @@ import java.net.http.HttpResponse;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +22,133 @@ public class Chat {
     public static final String MODEL = "google/gemini-3.8-flash";
     public static int totalPromptTokens = 0;
     public static int totalCompletionTokens = 0;
+
+    // Active tools and MCP server mappings
+    private static final List<Tool> allTools = new ArrayList<>();
+    private static final List<McpClient> mcpClients = new ArrayList<>();
+    private static final Map<String, McpClient> mcpToolMap = new HashMap<>();
+
+    /**
+     * Registers an MCP server by URL, fetches its exposed tools, and includes them in the agent's tools.
+     *
+     * @param url MCP server HTTP endpoint (e.g. "http://127.0.0.1:3000/mcp")
+     * @return list of newly registered tools
+     */
+    public static List<Tool> addMcpServer(String url) {
+        return addMcpServer(new McpClient(url));
+    }
+
+    /**
+     * Registers an McpClient, fetches its exposed tools, and includes them in the agent's tools.
+     *
+     * @param client McpClient instance
+     * @return list of newly registered tools
+     */
+    public static List<Tool> addMcpServer(McpClient client) {
+        List<Tool> added = new ArrayList<>();
+        try {
+            List<McpToolInfo> toolInfos = client.listTools();
+            mcpClients.add(client);
+            for (McpToolInfo info : toolInfos) {
+                Tool tool = new Tool("function", new ToolFunctionSpec(
+                        info.name(),
+                        info.effectiveDescription(),
+                        info.inputSchema() != null && !info.inputSchema().isEmpty() ? info.inputSchema() : Map.of("type", "object")
+                ));
+                allTools.add(tool);
+                mcpToolMap.put(info.name(), client);
+                added.add(tool);
+            }
+            System.out.printf("[MCP] Ansluten till %s: laddade %d verktyg %s%n",
+                    client.getEndpoint(),
+                    toolInfos.size(),
+                    toolInfos.stream().map(McpToolInfo::name).toList());
+        } catch (Exception e) {
+            System.err.printf("[MCP] Kunde inte läsa verktyg från %s: %s%n", client.getEndpoint(), e.getMessage());
+        }
+        return added;
+    }
+
+    private static void initLocalTools() {
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "get_current_datetime",
+                        "Returns the current date and time for Stockholm, Sweden.",
+                        Map.of("type", "object",
+                                "properties", Map.of(),
+                                "required", List.of()
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "run_powershell",
+                        "Executes a PowerShell command on the local Windows system. Requires user confirmation.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "command", Map.of("type", "string", "description", "The PowerShell command to execute")
+                                ),
+                                "required", List.of("command")
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "list_directory",
+                        "Lists the contents of a directory starting from the current working directory.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "path", Map.of("type", "string", "description", "The directory path to list (default is current directory '.')")
+                                ),
+                                "required", List.of()
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "read_file",
+                        "Reads and returns the content of a file. Requires user confirmation.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "path", Map.of("type", "string", "description", "The file path to read")
+                                ),
+                                "required", List.of("path")
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "write_file",
+                        "Creates a new file or overwrites an existing file with the provided content. Requires user confirmation.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "path", Map.of("type", "string", "description", "The file path to write to"),
+                                        "content", Map.of("type", "string", "description", "The full content to write into the file")
+                                ),
+                                "required", List.of("path", "content")
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "patch_file",
+                        "Updates a specific section of a file by finding a unique search block and replacing it with a replacement block. Requires user confirmation.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "path", Map.of("type", "string", "description", "The file path to update"),
+                                        "search", Map.of("type", "string", "description", "The exact lines of code to find in the file"),
+                                        "replace", Map.of("type", "string", "description", "The new lines of code to put in its place")
+                                ),
+                                "required", List.of("path", "search", "replace")
+                        )
+                )
+        ));
+    }
 
     public static void main(String[] args) throws IOException, InterruptedException {
         final String API_KEY = System.getenv("OPENROUTER_API_KEY");
@@ -43,90 +173,25 @@ public class Chat {
                         - Creating or overwriting files (requires user confirmation).
                         - Running PowerShell commands (requires user confirmation).
                         - Updating specific parts of files using search and replace (requires user confirmation).
+                        Additional tools may also be provided dynamically by connected MCP servers.
                         Use these tools proactively to solve programming and file-management tasks when requested.
                         """, ""));
 
-        // Definiera alla verktyg med beskrivningar och parametrar
-        var tools = List.of(
-                new Tool("function",
-                        new ToolFunctionSpec(
-                                "get_current_datetime",
-                                "Returns the current date and time for Stockholm, Sweden.",
-                                Map.of("type", "object",
-                                        "properties", Map.of(),
-                                        "required", List.of()
-                                )
-                        )
-                ),
-                new Tool("function",
-                        new ToolFunctionSpec(
-                                "run_powershell",
-                                "Executes a PowerShell command on the local Windows system. Requires user confirmation.",
-                                Map.of(
-                                        "type", "object",
-                                        "properties", Map.of(
-                                                "command", Map.of("type", "string", "description", "The PowerShell command to execute")
-                                        ),
-                                        "required", List.of("command")
-                                )
-                        )
-                ),
-                new Tool("function",
-                        new ToolFunctionSpec(
-                                "list_directory",
-                                "Lists the contents of a directory starting from the current working directory.",
-                                Map.of(
-                                        "type", "object",
-                                        "properties", Map.of(
-                                                "path", Map.of("type", "string", "description", "The directory path to list (default is current directory '.')")
-                                        ),
-                                        "required", List.of()
-                                )
-                        )
-                ),
-                new Tool("function",
-                        new ToolFunctionSpec(
-                                "read_file",
-                                "Reads and returns the content of a file. Requires user confirmation.",
-                                Map.of(
-                                        "type", "object",
-                                        "properties", Map.of(
-                                                "path", Map.of("type", "string", "description", "The file path to read")
-                                        ),
-                                        "required", List.of("path")
-                                )
-                        )
-                ),
-                new Tool("function",
-                        new ToolFunctionSpec(
-                                "write_file",
-                                "Creates a new file or overwrites an existing file with the provided content. Requires user confirmation.",
-                                Map.of(
-                                        "type", "object",
-                                        "properties", Map.of(
-                                                "path", Map.of("type", "string", "description", "The file path to write to"),
-                                                "content", Map.of("type", "string", "description", "The full content to write into the file")
-                                        ),
-                                        "required", List.of("path", "content")
-                                )
-                        )
-                ),
-                new Tool("function",
-                        new ToolFunctionSpec(
-                                "patch_file",
-                                "Updates a specific section of a file by finding a unique search block and replacing it with a replacement block. Requires user confirmation.",
-                                Map.of(
-                                        "type", "object",
-                                        "properties", Map.of(
-                                                "path", Map.of("type", "string", "description", "The file path to update"),
-                                                "search", Map.of("type", "string", "description", "The exact lines of code to find in the file"),
-                                                "replace", Map.of("type", "string", "description", "The new lines of code to put in its place")
-                                        ),
-                                        "required", List.of("path", "search", "replace")
-                                )
-                        )
-                )
-        );
+        // Initiera lokala verktyg
+        initLocalTools();
+
+        // Anslut till MCP-server: via miljövariabler eller standard lokal URL
+        String mcpServersEnv = System.getenv("MCP_SERVERS");
+        if (mcpServersEnv != null && !mcpServersEnv.isBlank()) {
+            for (String serverUrl : mcpServersEnv.split(",")) {
+                if (!serverUrl.isBlank()) {
+                    addMcpServer(serverUrl.trim());
+                }
+            }
+        } else {
+            String defaultServer = System.getenv().getOrDefault("MCP_SERVER_URL", "http://127.0.0.1:3000/mcp");
+            addMcpServer(defaultServer);
+        }
 
         while (true) {
             String userInput = IO.readln("You: ");
@@ -138,9 +203,25 @@ public class Chat {
                 break;
             }
 
+            if (userInput.startsWith("/mcp add ")) {
+                String serverUrl = userInput.substring("/mcp add ".length()).trim();
+                addMcpServer(serverUrl);
+                continue;
+            }
+
+            if (userInput.equalsIgnoreCase("/mcp list")) {
+                System.out.println("Anslutna MCP-servrar (" + mcpClients.size() + "):");
+                for (McpClient c : mcpClients) {
+                    System.out.println("  - " + c.getEndpoint());
+                }
+                System.out.println("Aktiva verktyg (" + allTools.size() + "): "
+                        + allTools.stream().map(t -> t.function().name()).toList());
+                continue;
+            }
+
             history.add(new Message("user", userInput, ""));
             while (true) {
-                OpenRouterResponse or = sendToModel(httpClient, mapper, history, tools, API_KEY);
+                OpenRouterResponse or = sendToModel(httpClient, mapper, history, allTools, API_KEY);
                 // Håll koll på tokens om usage finns med i svaret
                 if (or.usage() != null) {
                     totalPromptTokens += or.usage().prompt_tokens();
@@ -164,7 +245,6 @@ public class Chat {
                 if ("tool_calls".equals(finish)) {
                     System.out.println("Tool call requested: " + msg.tool_calls());
 
-                    // HÄR ÄR ÄNDRINGEN: Skicka med msg.tool_calls() i historiken!
                     history.add(new Message("assistant", msg.content(), null, msg.tool_calls()));
 
                     for (ToolCall toolCall : msg.tool_calls()) {
@@ -184,6 +264,13 @@ public class Chat {
 
         try {
             Map<String, Object> args = mapper.readValue(argumentsJson, Map.class);
+
+            // Kontrollera om verktyget tillhandahålls av en ansluten MCP-server
+            McpClient mcpClient = mcpToolMap.get(name);
+            if (mcpClient != null) {
+                System.out.println("\n[MCP] Kör verktyg '" + name + "' på " + mcpClient.getEndpoint() + " med argument: " + argumentsJson);
+                return mcpClient.callToolAsString(name, args);
+            }
 
             if ("get_current_datetime".equals(name)) {
                 DateTimeResult result = getCurrentDateTime();
