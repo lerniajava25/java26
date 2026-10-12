@@ -1,7 +1,9 @@
-package org.example.mcp;
+package org.example.mcp.client;
 
-import org.example.mcp.tools.McpToolInfo;
-import org.example.mcp.tools.ToolResult;
+import org.example.mcp.server.McpCore;
+import org.example.mcp.server.McpException;
+import org.example.mcp.server.tools.McpToolInfo;
+import org.example.mcp.server.tools.ToolResult;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;

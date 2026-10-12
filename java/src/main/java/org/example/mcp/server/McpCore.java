@@ -1,8 +1,9 @@
-package org.example.mcp;
+package org.example.mcp.server;
 
-import org.example.mcp.tools.CurrentTimeTool;
-import org.example.mcp.tools.McpTool;
-import org.example.mcp.tools.ToolResult;
+import org.example.mcp.server.tools.CurrentTimeTool;
+import org.example.mcp.server.tools.McpTool;
+import org.example.mcp.server.tools.MySqlReadOnlyQueryTool;
+import org.example.mcp.server.tools.ToolResult;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -16,9 +17,9 @@ import java.util.*;
 public final class McpCore {
 
     /**
-     * Shared default instance pre-configured with {@link CurrentTimeTool}.
+     * Shared default instance pre-configured with {@link CurrentTimeTool} and {@link MySqlReadOnlyQueryTool}.
      */
-    private static final McpCore DEFAULT = new McpCore(new CurrentTimeTool());
+    private static final McpCore DEFAULT = new McpCore(/*new CurrentTimeTool(),*/ new MySqlReadOnlyQueryTool());
 
     public static McpCore getDefault() {
         return DEFAULT;
@@ -64,22 +65,22 @@ public final class McpCore {
     static final List<Object> SUPPORTED_VERSIONS = List.of(PROTOCOL_VERSION);
 
     // JSON-RPC standard codes
-    static final int PARSE_ERROR = -32700;
+    public static final int PARSE_ERROR = -32700;
     static final int INVALID_REQUEST = -32600;
     static final int METHOD_NOT_FOUND = -32601;
     static final int INVALID_PARAMS = -32602;
-    static final int INTERNAL_ERROR = -32603;
+    public static final int INTERNAL_ERROR = -32603;
     // MCP codes (-32020..-32099 are reserved for the specification)
     static final int HEADER_MISMATCH = -32020;
     static final int UNSUPPORTED_PROTOCOL_VERSION = -32022;
 
-    static final String META_VERSION = "io.modelcontextprotocol/protocolVersion";
-    static final String META_CLIENT_CAPS = "io.modelcontextprotocol/clientCapabilities";
+    public static final String META_VERSION = "io.modelcontextprotocol/protocolVersion";
+    public static final String META_CLIENT_CAPS = "io.modelcontextprotocol/clientCapabilities";
     static final String META_SERVER_INFO = "io.modelcontextprotocol/serverInfo";
 
     private final Map<String, McpTool> tools = Collections.synchronizedMap(new LinkedHashMap<>());
     private String instructions;
-    private String serverName = "java-time-server";
+    private String serverName = "java-mcp-server";
     private String serverVersion = "1.0.0";
 
     public McpCore() {

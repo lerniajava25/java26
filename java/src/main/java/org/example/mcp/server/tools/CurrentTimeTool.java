@@ -1,4 +1,4 @@
-package org.example.mcp.tools;
+package org.example.mcp.server.tools;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
-import static org.example.mcp.McpCore.obj;
+import static org.example.mcp.server.McpCore.obj;
 
 /**
  * Built-in MCP tool that returns the current date and time.

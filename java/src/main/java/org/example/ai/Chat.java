@@ -1,8 +1,8 @@
 package org.example.ai;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import org.example.mcp.McpClient;
-import org.example.mcp.tools.McpToolInfo;
+import org.example.mcp.client.McpClient;
+import org.example.mcp.server.tools.McpToolInfo;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;

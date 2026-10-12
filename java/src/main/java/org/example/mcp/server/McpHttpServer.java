@@ -1,9 +1,9 @@
-package org.example.mcp;
+package org.example.mcp.server;
 
 import com.sun.net.httpserver.Headers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
-import org.example.mcp.tools.McpTool;
+import org.example.mcp.server.tools.McpTool;
 import tools.jackson.core.JacksonException;
 
 import java.io.IOException;
@@ -64,8 +64,7 @@ public class McpHttpServer {
     }
 
     public static void main(String[] args) throws IOException {
-        int port = args.length > 0 ? Integer.parseInt(args[0])
-                : Integer.parseInt(System.getenv().getOrDefault("PORT", "3000"));
+        int port = Integer.parseInt(args.length > 0 ? args[0] : System.getenv().getOrDefault("PORT", "3000"));
         String extra = System.getenv("MCP_ALLOWED_HOSTS");
         if (extra != null) for (String h : extra.split(",")) if (!h.isBlank()) ALLOWED_ORIGIN_HOSTS.add(h.trim());
 

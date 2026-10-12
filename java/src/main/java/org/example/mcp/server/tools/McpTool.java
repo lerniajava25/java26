@@ -1,4 +1,4 @@
-package org.example.mcp.tools;
+package org.example.mcp.server.tools;
 
 import java.util.Map;
 

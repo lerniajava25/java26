@@ -1,6 +1,6 @@
-package org.example.mcp.tools;
+package org.example.mcp.server.tools;
 
-import org.example.mcp.McpCore;
+import org.example.mcp.server.McpCore;
 
 import java.util.LinkedHashMap;
 import java.util.List;

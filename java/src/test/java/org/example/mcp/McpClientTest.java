@@ -1,8 +1,10 @@
 package org.example.mcp;
 
 import com.sun.net.httpserver.HttpServer;
-import org.example.mcp.tools.McpTool;
-import org.example.mcp.tools.ToolResult;
+import org.example.mcp.server.McpCore;
+import org.example.mcp.server.McpHttpServer;
+import org.example.mcp.server.tools.McpTool;
+import org.example.mcp.server.tools.ToolResult;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;

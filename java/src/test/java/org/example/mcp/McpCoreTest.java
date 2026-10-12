@@ -1,8 +1,10 @@
 package org.example.mcp;
 
-import org.example.mcp.tools.CurrentTimeTool;
-import org.example.mcp.tools.McpTool;
-import org.example.mcp.tools.ToolResult;
+import org.example.mcp.server.McpCore;
+import org.example.mcp.server.McpException;
+import org.example.mcp.server.tools.CurrentTimeTool;
+import org.example.mcp.server.tools.McpTool;
+import org.example.mcp.server.tools.ToolResult;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

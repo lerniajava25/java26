@@ -1,4 +1,4 @@
-package org.example.mcp;
+package org.example.mcp.server;
 
 /**
  * A protocol-level failure: carries the JSON-RPC error code AND the HTTP status to use.
@@ -10,14 +10,14 @@ public class McpException extends RuntimeException {
     final int code;
     final transient Object data;
 
-    McpException(int httpStatus, int code, String message, Object data) {
+    public McpException(int httpStatus, int code, String message, Object data) {
         super(message);
         this.httpStatus = httpStatus;
         this.code = code;
         this.data = data;
     }
 
-    McpException(int httpStatus, int code, String message) {
+    public McpException(int httpStatus, int code, String message) {
         this(httpStatus, code, message, null);
     }
 }
