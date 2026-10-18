@@ -1,9 +1,6 @@
 package org.example.mcp.server;
 
-import org.example.mcp.server.tools.CurrentTimeTool;
-import org.example.mcp.server.tools.McpTool;
-import org.example.mcp.server.tools.MySqlReadOnlyQueryTool;
-import org.example.mcp.server.tools.ToolResult;
+import org.example.mcp.server.tools.*;
 import tools.jackson.core.StreamReadFeature;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -19,7 +16,11 @@ public final class McpCore {
     /**
      * Shared default instance pre-configured with {@link CurrentTimeTool} and {@link MySqlReadOnlyQueryTool}.
      */
-    private static final McpCore DEFAULT = new McpCore(/*new CurrentTimeTool(),*/ new MySqlReadOnlyQueryTool());
+    private static final McpCore DEFAULT = new McpCore(
+            /*new CurrentTimeTool(),*/
+            new MySqlReadOnlyQueryTool(),
+            new Context7ResolveLibraryTool(),
+            new Context7QueryDocsTool());
 
     public static McpCore getDefault() {
         return DEFAULT;
@@ -68,7 +69,7 @@ public final class McpCore {
     public static final int PARSE_ERROR = -32700;
     static final int INVALID_REQUEST = -32600;
     static final int METHOD_NOT_FOUND = -32601;
-    static final int INVALID_PARAMS = -32602;
+    public static final int INVALID_PARAMS = -32602;
     public static final int INTERNAL_ERROR = -32603;
     // MCP codes (-32020..-32099 are reserved for the specification)
     static final int HEADER_MISMATCH = -32020;

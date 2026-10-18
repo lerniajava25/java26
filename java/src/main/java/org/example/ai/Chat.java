@@ -18,10 +18,19 @@ import java.util.*;
 import java.util.regex.Pattern;
 
 public class Chat {
+    //openrouter.ai
     public static final String HOST = "https://openrouter.ai";
     public static final String MODEL = "google/gemini-3.8-flash";
+    public static final String ENDPOINT = "/api/v1/chat/completions";
+    //Local LM Studio
+//    public static final String HOST = "http://localhost:1234";
+//    public static final String MODEL = "google/gemma-4-e2b";
+//    public static final String ENDPOINT = "/v1/chat/completions";
+
     public static int totalPromptTokens = 0;
     public static int totalCompletionTokens = 0;
+    public static final int MAX_WEB_DOWNLOAD_CHARS = 20_000;
+    public static final int MAX_WEB_DOWNLOAD_BYTES = 1_048_576; // 1 MB cap
 
     // Active tools and MCP server mappings
     private static final List<Tool> allTools = new ArrayList<>();
@@ -148,6 +157,62 @@ public class Chat {
                         )
                 )
         ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "fetch_url",
+                        "Fetches web page or API content from an HTTP or HTTPS URL using a GET request. Requires user confirmation.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "url", Map.of("type", "string", "description", "The full HTTP or HTTPS URL to retrieve, e.g. 'https://example.com'")
+                                ),
+                                "required", List.of("url")
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "ask_question",
+                        "Asks the user a clarifying question when requirements are ambiguous, or prompts them to make a choice between implementation alternatives.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "prompt", Map.of("type", "string", "description", "The clarifying question or choice to present to the user.")
+                                ),
+                                "required", List.of("prompt")
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "find_file",
+                        "Finds files matching a glob pattern (e.g. '*.java', 'pom.xml', '**/*Controller*') within a directory tree. Ignores common build/VCS directories (target, .git, .idea).",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "pattern", Map.of("type", "string", "description", "The glob pattern to match filenames against, e.g. '*.java', 'pom.xml', or '**/*.json'."),
+                                        "path", Map.of("type", "string", "description", "The root directory path to start searching from (default is current directory '.')")
+                                ),
+                                "required", List.of("pattern")
+                        )
+                )
+        ));
+        allTools.add(new Tool("function",
+                new ToolFunctionSpec(
+                        "search_directory",
+                        "Searches for text content inside files within a directory tree. Returns matching file paths, line numbers, and matching lines. Ignores common build/VCS directories (target, .git, .idea) and binary files.",
+                        Map.of(
+                                "type", "object",
+                                "properties", Map.of(
+                                        "query", Map.of("type", "string", "description", "The text string or regex pattern to search for in file contents."),
+                                        "path", Map.of("type", "string", "description", "The root directory path to start searching from (default is current directory '.')"),
+                                        "file_pattern", Map.of("type", "string", "description", "Optional glob pattern to restrict which files are searched, e.g. '*.java' or '*.xml'."),
+                                        "is_regex", Map.of("type", "boolean", "description", "Whether to treat the query as a regular expression (default is false).")
+                                ),
+                                "required", List.of("query")
+                        )
+                )
+        ));
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -170,6 +235,8 @@ public class Chat {
                         You have access to local tools for:
                         - Getting current date and time.
                         - Listing directories and reading files (requires user confirmation).
+                        - Finding files by glob pattern across the directory tree (`find_file`).
+                        - Searching for text or code within files across the directory tree (`search_directory`).
                         - Creating or overwriting files (requires user confirmation).
                         - Running PowerShell commands (requires user confirmation).
                         - Updating specific parts of files using search and replace (requires user confirmation).
@@ -735,7 +802,7 @@ public class Chat {
                 .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(requestBody)))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
-                .uri(URI.create(HOST + "/api/v1/chat/completions"))
+                .uri(URI.create(HOST + ENDPOINT))
                 .build();
         var response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString());
         return mapper.readValue(response.body(), OpenRouterResponse.class);
