@@ -6,9 +6,14 @@ public class App {
     public static void main(String[] args) {
         String url = "jdbc:mysql://localhost:3306/demo_shop?user=root&password=root";
 
-        try (Connection conn = DriverManager.getConnection(url);
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery("SELECT * FROM customers")) {
+        String name = "Anna' OR '1'='1";
+        //String name = "Anna";
+
+        try (Connection conn = DriverManager.getConnection(url)) {
+
+            PreparedStatement stmt = conn.prepareStatement("select * from customers where first_name = ?");
+            stmt.setString(1, name);
+            ResultSet rs = stmt.executeQuery();
 
             ResultSetMetaData meta = rs.getMetaData();
             int columnCount = meta.getColumnCount();
