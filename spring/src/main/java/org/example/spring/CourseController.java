@@ -18,6 +18,6 @@ public class CourseController {
 
     @GetMapping
     public List<Course> findAll() {
-        return courseRepository.findAll();
+        return courseRepository.findAllBy();
     }
 }

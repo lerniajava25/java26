@@ -20,7 +20,16 @@ public class Application {
                 Course course = new Course();
                 course.setTitle("Java programming");
                 course.setCredits(50);
-                courseRepository.save(course);
+
+                Student student = new Student();
+                student.setName("John");
+                course.addStudent(student);
+
+                var savedCourse = courseRepository.save(course);
+                Student student2 = new Student();
+                student2.setName("Kalle");
+                savedCourse.addStudent(student2);
+                courseRepository.save(savedCourse);
             }
         };
     }
