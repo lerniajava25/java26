@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="https://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>Kurshantering</title>
@@ -7,15 +7,18 @@
 </head>
 <body class="container mt-5">
 
-<h1 class="mb-4">Kurser (Server-renderat med Thymeleaf)</h1>
+<div th:replace="~{fragments/nav :: nav}"></div>
 
-<!-- Tabell som loopar igenom kurserna från databasen -->
+<h1 class="mb-4">Kurser</h1>
+
 <table class="table table-striped table-bordered">
     <thead class="table-dark">
     <tr>
         <th>ID</th>
         <th>Titel</th>
         <th>Poäng</th>
+        <th>Studenter</th>
+        <th>Tilldela</th>
     </tr>
     </thead>
     <tbody>
@@ -23,6 +26,27 @@
         <td th:text="${course.id}">1</td>
         <td th:text="${course.title}">Java Systems Development</td>
         <td th:text="${course.credits}">15</td>
+        <td>
+            <span th:each="student, iter : ${course.students}">
+                <span th:text="${student.name}" th:classappend="${iter.last} ? '' : ' me-2'">John</span>
+                <form th:action="@{'/courses/' + ${course.id} + '/remove-student/' + ${student.id}}"
+                      method="post" class="d-inline ms-1">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Ta bort">×</button>
+                </form>
+            </span>
+            <span th:if="${course.students.empty}">Inga studenter</span>
+        </td>
+        <td>
+            <span th:each="student : ${students}">
+                <form th:if="${!course.students.contains(student)}"
+                      th:action="@{'/courses/' + ${course.id} + '/students/' + ${student.id}}"
+                      method="post" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-outline-success"
+                            th:attr="title=${student.name}"
+                            th:text="${student.name}">Anna</button>
+                </form>
+            </span>
+        </td>
     </tr>
     </tbody>
 </table>

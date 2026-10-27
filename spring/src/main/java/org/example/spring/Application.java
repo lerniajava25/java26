@@ -1,5 +1,7 @@
 package org.example.spring;
 
+import org.example.spring.repository.CourseRepository;
+import org.example.spring.service.InitialDataService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -12,24 +14,12 @@ public class Application {
         SpringApplication.run(Application.class, args);
     }
 
-
     @Bean
-    public CommandLineRunner commandLineRunner(CourseRepository courseRepository) {
+    public CommandLineRunner commandLineRunner(CourseRepository courseRepository,
+                                               InitialDataService initialDataService) {
         return args -> {
-            if (courseRepository.findAll().isEmpty()) {
-                Course course = new Course();
-                course.setTitle("Java programming");
-                course.setCredits(50);
-
-                Student student = new Student();
-                student.setName("John");
-                course.addStudent(student);
-
-                var savedCourse = courseRepository.save(course);
-                Student student2 = new Student();
-                student2.setName("Kalle");
-                savedCourse.addStudent(student2);
-                courseRepository.save(savedCourse);
+            if (courseRepository.count() == 0) {
+                initialDataService.seedData();
             }
         };
     }

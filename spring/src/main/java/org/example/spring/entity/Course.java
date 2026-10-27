@@ -1,4 +1,4 @@
-package org.example.spring;
+package org.example.spring.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.proxy.HibernateProxy;
@@ -16,6 +16,14 @@ public class Course {
     private Long id;
     private String title;
     private int credits;
+
+    public Course() {
+    }
+
+    public Course(String title, int credits) {
+        this.title = title;
+        this.credits = credits;
+    }
 
     @ManyToMany(cascade = {CascadeType.DETACH, CascadeType.MERGE, CascadeType.PERSIST, CascadeType.REFRESH})
     private Set<Student> students = new HashSet<>();
@@ -55,6 +63,11 @@ public class Course {
     public void addStudent(Student student) {
         this.students.add(student);
         student.courses.add(this);
+    }
+
+    public void removeStudent(Student student) {
+        this.students.remove(student);
+        student.courses.remove(this);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package org.example.spring;
+package org.example.spring.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.proxy.HibernateProxy;
@@ -8,12 +8,21 @@ import java.util.Objects;
 import java.util.Set;
 
 @Entity
+@NamedEntityGraph(name = "Student.detail",
+        attributeNodes = @NamedAttributeNode("courses"))
 public class Student {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
+
+    public Student() {
+    }
+
+    public Student(String name) {
+        this.name = name;
+    }
 
     @ManyToMany(mappedBy = "students")
     Set<Course> courses = new HashSet<>();
@@ -32,6 +41,10 @@ public class Student {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Set<Course> getCourses() {
+        return courses;
     }
 
     @Override
