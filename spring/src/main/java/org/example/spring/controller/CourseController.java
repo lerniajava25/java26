@@ -4,12 +4,16 @@ import org.example.spring.dto.CourseDto;
 import org.example.spring.dto.CourseRequest;
 import org.example.spring.entity.Course;
 import org.example.spring.service.CourseService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@ConditionalOnProperty(
+        name = "api.enabled"
+)
 @RequestMapping("/api/courses")
 public class CourseController {
 

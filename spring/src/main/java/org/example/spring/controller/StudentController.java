@@ -5,12 +5,16 @@ import org.example.spring.dto.StudentRequest;
 import org.example.spring.entity.Course;
 import org.example.spring.entity.Student;
 import org.example.spring.service.StudentService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
+@ConditionalOnProperty(
+        name = "api.enabled"
+)
 @RequestMapping("/api/students")
 public class StudentController {
 

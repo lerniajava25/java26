@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html xmlns:th="https://www.thymeleaf.org">
+<html xmlns:th="https://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <title>Kurshantering</title>
@@ -52,7 +53,7 @@
 </table>
 
 <!-- Formulär för att lägga till ny kurs (testar JPA write + databas) -->
-<div class="card mt-5">
+<div sec:authorize="isAuthenticated()" class="card mt-5">
     <div class="card-header">Lägg till ny kurs</div>
     <div class="card-body">
         <form th:action="@{/courses}" th:object="${course}" method="post">
