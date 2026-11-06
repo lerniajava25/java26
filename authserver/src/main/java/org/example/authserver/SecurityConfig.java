@@ -117,7 +117,27 @@ public class SecurityConfig {
                 )
                 .build();
 
-        return new InMemoryRegisteredClientRepository(oidcClient);
+        RegisteredClient apiClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("api-client")
+                .clientSecret("{noop}apisecret")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/authserver")
+                .postLogoutRedirectUri("http://127.0.0.1:8080/")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .scope("offline_access")
+                .clientSettings(
+                        ClientSettings.builder()
+                                .requireAuthorizationConsent(false)
+                                .requireProofKey(false)
+                                .build()
+                )
+                .build();
+
+        return new InMemoryRegisteredClientRepository(oidcClient, apiClient);
     }
 
     @Bean
@@ -160,7 +180,8 @@ public class SecurityConfig {
     @Bean
     public OAuth2TokenCustomizer<JwtEncodingContext> tokenCustomizer() {
         return context -> {
-            if (context.getTokenType().getValue().equals("id_token")) {
+            if (context.getTokenType().getValue().equals("id_token") ||
+                    context.getTokenType().getValue().equals("access_token")) {
                 var roles = context.getPrincipal().getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority)
                         .toList();
