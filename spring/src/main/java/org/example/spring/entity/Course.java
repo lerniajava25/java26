@@ -10,6 +10,7 @@ import java.util.Set;
 @Entity
 @NamedEntityGraph(name = "Course.detail",
         attributeNodes = @NamedAttributeNode("students"))
+@EntityListeners(CourseEntityListener.class)
 public class Course {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

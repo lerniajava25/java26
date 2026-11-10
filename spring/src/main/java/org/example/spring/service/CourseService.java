@@ -14,6 +14,8 @@ import java.util.Optional;
 @Transactional
 public class CourseService {
 
+    boolean simulatedError = true;
+
     private final CourseRepository courseRepository;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -30,6 +32,7 @@ public class CourseService {
         return courseRepository.findById(id);
     }
 
+    @Transactional
     public Course save(Course course) {
         var savedCourse = courseRepository.save(course);
         eventPublisher.publishEvent(new CourseCreatedEvent(savedCourse.getTitle()));
