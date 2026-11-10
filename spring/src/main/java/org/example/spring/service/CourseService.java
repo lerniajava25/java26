@@ -40,6 +40,7 @@ public class CourseService {
         var savedCourse = courseRepository.save(course);
         //eventPublisher.publishEvent(new CourseCreatedEvent(savedCourse.getTitle()));
         var message = MessageBuilder.withPayload(course.toString())
+                .setHeader("custom-header", "header value")
                 .build();
 
         messagingTemplate.send("course-exchange", "course.created", message);
