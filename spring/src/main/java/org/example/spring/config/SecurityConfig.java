@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
@@ -62,8 +63,8 @@ public class SecurityConfig {
     SecurityFilterChain webFilterChain(HttpSecurity http) {
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/courses").permitAll()
-                .requestMatchers("/courses").hasRole("USER")
-                .requestMatchers("/students").authenticated()
+                .requestMatchers("/courses/**").authenticated()
+                .requestMatchers("/students/**").authenticated()
                 .requestMatchers("/me").authenticated()
                 //.requestMatchers("/webauthn/register").permitAll()
                 .anyRequest().denyAll()
@@ -72,10 +73,10 @@ public class SecurityConfig {
                         .oidcUserService(oidcUserService())
                 )
         );
-//        http.formLogin(Customizer.withDefaults())
-//                .webAuthn((webAuthn) -> webAuthn
-//                        .rpId("cs.localhost")
-//                        .allowedOrigins("http://cs.localhost:8080"));
+        http.formLogin(Customizer.withDefaults())
+                .webAuthn((webAuthn) -> webAuthn
+                        .rpId("cs.localhost")
+                        .allowedOrigins("http://cs.localhost:8080"));
         return http.build();
     }
 

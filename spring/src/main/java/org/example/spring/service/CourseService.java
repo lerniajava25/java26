@@ -1,7 +1,9 @@
 package org.example.spring.service;
 
 import org.example.spring.entity.Course;
+import org.example.spring.events.CourseCreatedEvent;
 import org.example.spring.repository.CourseRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,9 +15,11 @@ import java.util.Optional;
 public class CourseService {
 
     private final CourseRepository courseRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    CourseService(CourseRepository courseRepository) {
+    CourseService(CourseRepository courseRepository, ApplicationEventPublisher eventPublisher) {
         this.courseRepository = courseRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     public List<Course> findAll() {
@@ -27,7 +31,9 @@ public class CourseService {
     }
 
     public Course save(Course course) {
-        return courseRepository.save(course);
+        var savedCourse = courseRepository.save(course);
+        eventPublisher.publishEvent(new CourseCreatedEvent(savedCourse.getTitle()));
+        return savedCourse;
     }
 
     public void delete(Long id) {
