@@ -1,10 +1,10 @@
 package org.example.spring.service;
 
 import org.example.spring.entity.Course;
+import org.example.spring.entity.Outbox;
 import org.example.spring.repository.CourseRepository;
-import org.springframework.amqp.rabbit.core.RabbitMessagingTemplate;
+import org.example.spring.repository.OutboxRepository;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,13 +18,13 @@ public class CourseService {
     boolean simulatedError = true;
 
     private final CourseRepository courseRepository;
+    private final OutboxRepository outboxRepository;
     private final ApplicationEventPublisher eventPublisher;
-    private final RabbitMessagingTemplate messagingTemplate;
 
-    CourseService(CourseRepository courseRepository, ApplicationEventPublisher eventPublisher, RabbitMessagingTemplate messagingTemplate) {
+    CourseService(CourseRepository courseRepository, OutboxRepository outboxRepository, ApplicationEventPublisher eventPublisher) {
         this.courseRepository = courseRepository;
+        this.outboxRepository = outboxRepository;
         this.eventPublisher = eventPublisher;
-        this.messagingTemplate = messagingTemplate;
     }
 
     public List<Course> findAll() {
@@ -38,12 +38,10 @@ public class CourseService {
     @Transactional
     public Course save(Course course) {
         var savedCourse = courseRepository.save(course);
-        //eventPublisher.publishEvent(new CourseCreatedEvent(savedCourse.getTitle()));
-        var message = MessageBuilder.withPayload(course.toString())
-                .setHeader("custom-header", "header value")
-                .build();
 
-        messagingTemplate.send("course-exchange", "course.created", message);
+        var outbox = new Outbox(savedCourse.toString(), "course.created");
+        outboxRepository.save(outbox);
+        
         return savedCourse;
     }
 
