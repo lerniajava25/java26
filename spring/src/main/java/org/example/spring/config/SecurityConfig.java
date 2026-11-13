@@ -12,6 +12,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -60,23 +62,27 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    SecurityFilterChain webFilterChain(HttpSecurity http) {
+    SecurityFilterChain webFilterChain(HttpSecurity http, UserDetailsService userDetailsService) {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.GET, "/courses").permitAll()
-                .requestMatchers("/courses/**").authenticated()
-                .requestMatchers("/students/**").authenticated()
-                .requestMatchers("/me").authenticated()
-                //.requestMatchers("/webauthn/register").permitAll()
-                .anyRequest().denyAll()
-        ).oauth2Login((oauth2) -> oauth2
-                .userInfoEndpoint((userInfo) -> userInfo
-                        .oidcUserService(oidcUserService())
-                )
-        );
-        http.formLogin(Customizer.withDefaults())
+                        .requestMatchers(HttpMethod.GET, "/courses").permitAll()
+                        .requestMatchers("/courses/**").authenticated()
+                        .requestMatchers("/students/**").authenticated()
+                        .requestMatchers("/me").authenticated()
+                        .requestMatchers("/webauthn/register").permitAll()
+                        .anyRequest().denyAll())
+                .oauth2Login((oauth2) -> oauth2
+                        .userInfoEndpoint((userInfo) -> userInfo
+                                .oidcUserService(oidcUserService())
+                        ))
+                .formLogin(Customizer.withDefaults())
                 .webAuthn((webAuthn) -> webAuthn
                         .rpId("cs.localhost")
-                        .allowedOrigins("http://cs.localhost:8080"));
+                        .allowedOrigins("http://cs.localhost:8080"))
+                .rememberMe(rememberMe -> rememberMe
+                        .key("uniktOchHemligtNyckelOrdSomInteAndrasVidOmstart")
+                        //.userDetailsService(userDetailsService)
+                        .alwaysRemember(true)
+                );
         return http.build();
     }
 
@@ -104,16 +110,23 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        UserDetails user = User.withDefaultPasswordEncoder()
-                .username("user")
+        UserDetails user = User
+                .withUsername("user")
                 .password("password")
                 .roles("USER")
                 .build();
-        UserDetails admin = User.withDefaultPasswordEncoder()
-                .username("admin")
+        UserDetails admin = User
+                .withUsername("admin")
                 .password("password")
                 .roles("ADMIN")
                 .build();
         return new InMemoryUserDetailsManager(user, admin);
+    }
+
+    // Bara för lokal utveckling. Ta bort i produktion så används DelegatingPasswordEncoder.
+    @Bean
+    @SuppressWarnings("deprecation")
+    public PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance();
     }
 }
