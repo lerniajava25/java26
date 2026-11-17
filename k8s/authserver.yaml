@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  labels:
+    app: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      name: auth
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: authserver:0f2d
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              port: 9009
+              path: /actuator/health/liveness
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              port: 9009
+              path: /actuator/health/readiness
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  type: NodePort
+  selector:
+    app: auth
+  ports:
+    - port: 80
+      targetPort: 9000
+      nodePort: 30000
